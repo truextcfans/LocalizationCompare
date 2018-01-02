@@ -6,29 +6,35 @@
 //  Copyright © 2017年 谢添才. All rights reserved.
 //
 
+
+
 import UIKit
 
 class ViewController: UIViewController {
 
     override func viewDidLoad() {
         super.viewDidLoad()
-        let lanArr = ["zh-Hans.lproj","en.lproj"]
+        let lanArr = ["zh-Hans.lproj","en.lproj","zh-Hant.lproj"]
         
-        let path = "/Users/xietiancai/Desktop/2Dfire/YunCash/CCDHome"
-//        let path = "/Users/xietiancai/Desktop/2Dfire/YunCash/YunCash"
+        let ignoreArr = ["DateTools.strings","IQKeyboardManager.strings","UnzipKit.strings"]
         
+        
+//        let path = "/Users/xietiancai/Desktop/2Dfire/YunCash/CCDTakeOut"
+        let path = "/Users/xietiancai/Desktop/2Dfire/localize"
+//       total_yesterday
         let stringsArr = getFilePathWithSuffix(path, "strings").map{path + "/" + $0}
         
         let lanPathArr = lanArr.map { (lan) -> [String] in
            return stringsArr.filter{$0.contains(lan)}
             }
         
-        let lanModelArr:[[StringFileModel]] = lanPathArr.map{$0.map{StringFileModel.init(path: $0)}.filter{$0 != nil}.map{$0!}}
+        let lanModelArr:[[StringFileModel]] = lanPathArr.map{$0.map{StringFileModel.init(path: $0)}.filter{$0 != nil && !ignoreArr.contains($0!.title)}.map{$0!}}
         let keyModel:[StringFileModel] = lanModelArr.first!
-        for  i in 1..<lanModelArr.count {
-            compareModels(keyModel, lanModelArr[i])
-        }
-        
+
+        compareMultiModles(lanModelArr)
+                for  i in 1..<lanModelArr.count {
+                    compareModels(keyModel, lanModelArr[i])
+                }
         // Do any additional setup after loading the view, typically from a nib.
     }
 
@@ -39,27 +45,67 @@ class ViewController: UIViewController {
 
 
 }
+
+func compareMultiModles(_ modelArr:[[StringFileModel]]){
+    var titleArr:[[String]] = modelArr.map{$0.map{$0.title}}
+    
+    var keysArr:[String?] = modelArr.map{$0.first?.lan}
+    
+    var mapArr:[String:Int] = [:]
+    
+    for i in 0..<modelArr.count {
+        let key = 1<<i
+        for title in titleArr[i]{
+            if mapArr.keys.contains(title){
+                mapArr[title] = mapArr[title]! + key
+            }
+            else{
+                mapArr[title] = key
+            }
+        }
+    }
+    
+    for i in 1..<((1<<modelArr.count)){
+        let titles = mapArr.filter{$0.value == i}.map{$0.key}
+        var keys:[String] = []
+        for j in 0..<keysArr.count{
+            if i&(1<<j) == 1<<j{
+                keys.append(keysArr[j] ?? "")
+            }
+        }
+        print(keys.reduce(""){$0 + $1 + "  "})
+        print(titles.CH)
+        
+    }
+    
+    
+    
+    
+}
+
+
+
 func compareModels(_ left:[StringFileModel],_ right:[StringFileModel]) {
     let leftTitleArr = left.map{$0.title}
     let rightTiltleArr = right.map{$0.title}
-    
-    //左侧有的 右侧没有的model 以title为准
-    let leftMore = left.filter{!rightTiltleArr.contains($0.title)}
-    
-    print("\(left.first!.lan) ")
-    print(leftMore.map{$0.title}.CH)
-    
-    //左侧有的 右侧没有的model 以title为准
-    let rightMore = right.filter{!leftTitleArr.contains($0.title)}
-    
-    print("\(right.first!.lan) ")
-    print(rightMore.map{$0.title}.CH)
-    
-    //公共model
+//
+//    //左侧有的 右侧没有的model 以title为准
+//    let leftMore = left.filter{!rightTiltleArr.contains($0.title)}
+//
+//    print("\(left.first!.lan) ")
+//    print(leftMore.map{$0.title}.CH)
+//
+//    //左侧有的 右侧没有的model 以title为准
+//    let rightMore = right.filter{!leftTitleArr.contains($0.title)}
+//
+//    print("\(right.first!.lan) ")
+//    print(rightMore.map{$0.title}.CH)
+//
+//    //公共model
     let bothArr = left.filter{rightTiltleArr.contains($0.title)}
     let bothTitle = bothArr.map{$0.title}
-    print("\(left.first!.lan)  \(right.first!.lan) ")
-    print(bothTitle.CH)
+//    print("\(left.first!.lan)  \(right.first!.lan) ")
+//    print(bothTitle.CH)
     
     bothTitle.map { (title) -> (StringFileModel,StringFileModel) in
         let leftModel = left.filter{$0.title == title}.first!
@@ -81,14 +127,20 @@ func comPareModelDetail(_ left:StringFileModel,_ right:StringFileModel) {
     let rightLost = leftDataKeyArr.filter{!rightDataKeyArr.contains($0)}
     if rightLost.count > 0{
         print("检测到 \(right.lan)  \(right.title) 缺失下列key")
-        print(rightLost.CH)
+        let fin = left.data.filter({ (model) -> Bool in
+            return rightLost.contains(model.name)
+        })
+        print(fin.CH)
     }
     
     //left 中缺失的 key
     let leftLost = rightDataKeyArr.filter{!leftDataKeyArr.contains($0)}
     if leftLost.count > 0{
         print("检测到 \(left.lan)  \(left.title) 缺失下列key")
-        print(leftLost.CH)
+        let fin = right.data.filter({ (model) -> Bool in
+            return leftLost.contains(model.name)
+        })
+        print(fin.CH)
     }
     
     
@@ -111,7 +163,7 @@ func cheatModelDetail(_ model:StringFileModel)->[String]{
     let repeatKeys = tempdic.filter{$0.value > 1}.map{$0.key}
     if repeatKeys.count != 0{
         print("检测重复 \(model.title)  \(model.lan)")
-        let repeatDataArr = dataArr.filter{repeatKeys.contains($0.name)}
+        let repeatDataArr = dataArr.filter{repeatKeys.contains($0.name)}.sorted(by: { $0.name > $1.name })
         print(repeatDataArr.CH)
     }
     
@@ -145,8 +197,8 @@ class StringFileModel:NSObject {
         self.data = dataArr.map{StringModel.init(str: $0)}.filter{$0 != nil}.map{$0!}
         self.otherData = dataArr.filter{StringModel.init(str: $0) == nil}
         if self.otherData.count > 0{
-            print("未检测数据 \(self.title)  \(self.lan)")
-            print(self.otherData.CH)
+//            print("未检测数据 \(self.title)  \(self.lan)")
+//            print(self.otherData.CH)
 
         }
     }
@@ -222,6 +274,4 @@ func getFilePathWithSuffix(_ path:String ,_ suffix:String = "png" )->[String]{
         }
     })
     return finArr
-    
-    
 }
